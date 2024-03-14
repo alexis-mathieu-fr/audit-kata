@@ -3,6 +3,7 @@ import {FileUpdate} from "./FileUpdate";
 
 export class AuditManager {
     maxEntriesPerFile: number
+    firstFileName = "audit_1.txt";
 
     constructor(maxEntriesPerFile: number) {
         this.maxEntriesPerFile = maxEntriesPerFile
@@ -12,22 +13,30 @@ export class AuditManager {
         let sorted = this.sortByIndex(files)
         let newRecord = `${visitorName};${this.formatDate(timeOfVisit)}`
 
-        if (sorted.length == 0) {
-            return new FileUpdate("audit_1.txt", newRecord)
-        }
+        return sorted.length == 0 ? this.createFirstFile(newRecord) : this.createOrUpdate(sorted, newRecord);
+    }
 
-        let last = sorted[sorted.length - 1]
-        let lines = last.file.lines;
+    private createOrUpdate(sorted: { index: number; file: FileContent }[], newRecord: string) {
+        let lastFile = sorted[sorted.length - 1]
+        return lastFile.file.lines.length < this.maxEntriesPerFile ?
+            this.appendToExistingFile(lastFile.file.lines, newRecord, lastFile) :
+            this.createNewFile(lastFile, newRecord);
+    }
 
-        if (lines.length < this.maxEntriesPerFile) {
-            lines.push(newRecord)
-            let newContent = `\n${lines}`
-            return new FileUpdate(last.file.fileName, newContent)
-        } else {
-            const newIndex = last.index + 1
-            const newName = `audit_${newIndex}.txt`
-            return new FileUpdate(newName, newRecord)
-        }
+    private createNewFile(last: { index: number; file: FileContent }, newRecord: string) {
+        const newIndex = last.index + 1
+        const newName = `audit_${newIndex}.txt`
+        return new FileUpdate(newName, newRecord)
+    }
+
+    private appendToExistingFile(lines: string[], newRecord: string, last: { index: number; file: FileContent }) {
+        lines.push(newRecord)
+        let newContent = `\n${lines}`
+        return new FileUpdate(last.file.fileName, newContent)
+    }
+
+    private createFirstFile(newRecord: string) {
+        return new FileUpdate(this.firstFileName, newRecord)
     }
 
     sortByIndex(files: FileContent[]): { index: number, file: FileContent }[] {
