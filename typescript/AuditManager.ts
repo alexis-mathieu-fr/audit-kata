@@ -1,43 +1,38 @@
-﻿export class AuditManager {
-    maxEntriesPerFile: number
-    directoryName: string
-    fileSystem: IFileSystem
+﻿import {FileContent} from "./FileContent";
+import {FileUpdate} from "./FileUpdate";
 
-    constructor(maxEntriesPerFile: number, directoryName: string, fileSystem: IFileSystem) {
+export class AuditManager {
+    maxEntriesPerFile: number
+
+    constructor(maxEntriesPerFile: number) {
         this.maxEntriesPerFile = maxEntriesPerFile
-        this.directoryName = directoryName
-        this.fileSystem = fileSystem
     }
 
-    addRecord(visitorName: string, timeOfVisit: Date) {
-        let filePaths = this.fileSystem.getFiles(this.directoryName)
-        let sorted = this.sortByIndex(filePaths)
+    addRecord(files: FileContent[], visitorName: string, timeOfVisit: Date): FileUpdate {
+        let sorted = this.sortByIndex(files)
         let newRecord = `${visitorName};${this.formatDate(timeOfVisit)}`
 
         if (sorted.length == 0) {
-            let newFile = `${this.directoryName}/audit_1.txt`
-            this.fileSystem.writeAllText(newFile, newRecord)
-            return
+            return new FileUpdate("audit_1.txt", newRecord)
         }
 
         let last = sorted[sorted.length - 1]
-        let lines = this.fileSystem.readAllLines(last.path)
+        let lines = last.file.lines;
 
         if (lines.length < this.maxEntriesPerFile) {
             lines.push(newRecord)
             let newContent = `\n${lines}`
-            this.fileSystem.writeAllText(last.path, newContent)
+            return new FileUpdate(last.file.fileName, newContent)
         } else {
-            const newIndex = last.index + 1;
-            const newName = `audit_${newIndex}.txt`;
-            const newFile = `${this.directoryName}/${newName}`
-            this.fileSystem.writeAllText(newFile, newRecord);
+            const newIndex = last.index + 1
+            const newName = `audit_${newIndex}.txt`
+            return new FileUpdate(newName, newRecord)
         }
     }
 
-    sortByIndex(filePaths: string[]): { index: number, path: string }[] {
-        return filePaths.sort()
-            .map((path: string, index: number) => ({index: index + 1, path: path}))
+    sortByIndex(files: FileContent[]): { index: number, file: FileContent }[] {
+        return files.sort()
+            .map((file: FileContent, index: number) => ({index: index + 1, file: file}))
     }
 
     formatDate(date: Date): string {
@@ -55,4 +50,4 @@
     formatToTwoDigits(n: any): string {
         return n === undefined || n < 10 ? `0${n}` : n.toString()
     }
-}
+}    

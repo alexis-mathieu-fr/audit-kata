@@ -1,34 +1,20 @@
-﻿import {afterEach, describe, expect, it, vi} from 'vitest'
+﻿import {expect, test} from 'vitest'
 import {AuditManager} from "./AuditManager";
+import {FileContent} from "./FileContent";
+import {FileUpdate} from "./FileUpdate";
 
-const directoryName = "audits";
+test('A_new_file_is_created_when_the_current_file_overflows', () => {
+    const existingFiles = [
+        new FileContent("audit_1.txt", []),
+        new FileContent("audit_2.txt", [
+            "Peter;2019-04-06 16:30:00",
+            "Jane;2019-04-06 16:40:00",
+            "Jack;2019-04-06 17:00:00"])]
 
-describe('AuditManagerTests', () => {
-    const fileSystem = {
-        getFiles: vi.fn(),
-        readAllLines: vi.fn(),
-        writeAllText: vi.fn()
-    }
+    const sut = new AuditManager(3)
 
-    afterEach(() => {
-        vi.restoreAllMocks()
-    })
+    const result = sut.addRecord(existingFiles, "Alice", new Date("2019-04-06T18:00:00"))
 
-    it('A_new_file_is_created_when_the_current_file_overflows', () => {
-
-        fileSystem.getFiles.mockReturnValueOnce([`${directoryName}/audit_1.txt`, `${directoryName}/audit_2.txt`])
-
-        fileSystem.readAllLines
-            .mockReturnValueOnce([
-                "Peter;2019-04-06 16:30:00",
-                "Jane;2019-04-06 16:40:00",
-                "Jack;2019-04-06 17:00:00"])
-
-        let sut = new AuditManager(3, directoryName, fileSystem)
-
-        sut.addRecord("Alice", new Date("2019-04-06T18:00:00"))
-
-        expect(fileSystem.writeAllText).toHaveBeenCalledWith(`${directoryName}/audit_3.txt`, "Alice;2019-04-06 18:00:00")
-    })
+    expect(result).toEqual(new FileUpdate(`audit_3.txt`, "Alice;2019-04-06 18:00:00"))
 })
 
